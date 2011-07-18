@@ -1,0 +1,30 @@
+CFLAGS += -Iphysics/bullet/src
+
+CXX_SRC += \
+	physics/box_rigid_body.cpp \
+	physics/physics.cpp
+
+LUA_NATIVE_MODULES += \
+    physics.box_rigid_body \
+    physics.physics
+
+#### Custom Build Stuff #######################################################
+
+BULLET_LIB := \
+	physics/bullet/src/.libs/libLinearMath.a \
+	physics/bullet/src/.libs/libBulletCollision.a \
+	physics/bullet/src/.libs/libBulletDynamics.a
+
+$(TARGET_EXE): $(BULLET_LIB)
+
+$(BULLET_LIB): physics/bullet/Makefile
+	$(MAKE) -C physics/bullet/
+
+physics/bullet/Makefile:
+	cd physics/bullet && ./autogen.sh && ./configure
+
+clean-all: clean-all-physics
+
+clean-all-physics:
+	test -f physics/bullet/Makefile && \
+		$(MAKE) -C physics/bullet distclean
