@@ -11,9 +11,9 @@ LUA_NATIVE_MODULES += \
 #### Custom Build Stuff #######################################################
 
 BULLET_LIB := \
-	physics/bullet/src/.libs/libLinearMath.a \
+	physics/bullet/src/.libs/libBulletDynamics.a \
 	physics/bullet/src/.libs/libBulletCollision.a \
-	physics/bullet/src/.libs/libBulletDynamics.a
+	physics/bullet/src/.libs/libLinearMath.a
 
 $(TARGET_EXE): $(BULLET_LIB)
 
