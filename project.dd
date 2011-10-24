@@ -1,11 +1,20 @@
 CFLAGS += -Iphysics/bullet/src
 
+C_SRC += \
+    physics/lua_utils.c
+
 CXX_SRC += \
 	physics/box_rigid_body.cpp \
+    physics/collider.cpp \
+    physics/collision.cpp \
+    physics/debug_draw.cpp \
 	physics/physics.cpp
+
 
 LUA_NATIVE_MODULES += \
     physics.box_rigid_body \
+    physics.collider \
+    physics.collision \
     physics.physics
 
 #### Custom Build Stuff #######################################################
@@ -27,4 +36,4 @@ clean-all: clean-all-physics
 
 clean-all-physics:
 	test -f physics/bullet/Makefile && \
-		$(MAKE) -C physics/bullet distclean
+		$(MAKE) -C physics/bullet distclean || true
