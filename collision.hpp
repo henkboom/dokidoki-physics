@@ -1,14 +1,8 @@
-#ifndef COLLISION_HPP
-#define COLLISION_HPP
+#ifndef PHYSICS_COLLISION_HPP
+#define PHYSICS_COLLISION_HPP
 
 #include <btBulletCollisionCommon.h>
 #include "debug_draw.hpp"
-
-extern "C" {
-    #include <lua.h>
-    #include <lualib.h>
-    #include <lauxlib.h>
-}
 
 class collision_controller
 {
@@ -35,8 +29,24 @@ class filter_callback : public btOverlapFilterCallback
         btBroadphaseProxy* proxy1) const;
 };
 
-// separate implementation into cpp file, with just a public interface class
-// here?
+struct convex_sweep_result
+{
+    btCollisionObject *collision_object;
+    btVector3 point;
+    btVector3 normal;
+    btScalar fraction;
+};
+
+// just makes the mask test one-directional, to be consistent with the discrete
+// filtering
+struct convex_sweep_result_callback : btCollisionWorld::ConvexResultCallback
+{
+    virtual bool needsCollision(btBroadphaseProxy *proxy0) const
+    {
+        return (proxy0->m_collisionFilterGroup & m_collisionFilterMask) != 0;
+    }
+};
+
 class collision_component
 {
     public:
@@ -48,6 +58,12 @@ class collision_component
         collision_controller *controller);
     void remove_collision_object(
         btCollisionObject *collision_object);
+
+    void convex_sweep_test(
+        btConvexShape *shape,
+        const btTransform &from,
+        const btTransform &to,
+        btCollisionWorld::ConvexResultCallback &callback);
 
     //TODO: figure out naming
     void draw_debug();

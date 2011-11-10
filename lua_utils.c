@@ -34,6 +34,8 @@ void get_by_field_path(lua_State *L, int index, const char *path)
 
 void l_tovect(lua_State *L, int index, double *x, double *y, double *z)
 {
+    luaL_checktype(L, index, LUA_TTABLE);
+
     lua_rawgeti(L, index, 1);
     *x = lua_tonumber(L, -1);
     lua_pop(L, 1);
@@ -65,6 +67,8 @@ void l_pushvect(lua_State *L, double x, double y, double z)
 void l_toquaternion(
     lua_State *L, int index, double *w, double *x, double *y, double *z)
 {
+    luaL_checktype(L, index, LUA_TTABLE);
+
     lua_rawgeti(L, index, 1);
     *w = lua_tonumber(L, -1);
     lua_pop(L, 1);

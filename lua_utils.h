@@ -2,6 +2,8 @@
 #define LUA_UTILS_H
 
 #include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
 
 // registers a function with the top stack element as an upvalue
 // the function is registered in the current function environment

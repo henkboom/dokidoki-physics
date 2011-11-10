@@ -7,6 +7,7 @@ CXX_SRC += \
 	physics/box_rigid_body.cpp \
     physics/collider.cpp \
     physics/collision.cpp \
+    physics/collision_shape.cpp \
     physics/debug_draw.cpp \
 	physics/physics.cpp
 
@@ -14,8 +15,11 @@ CXX_SRC += \
 LUA_NATIVE_MODULES += \
     physics.box_rigid_body \
     physics.collider \
+    physics.box_shape \
+    physics.box_2d_shape \
     physics.collision \
-    physics.physics
+    physics.physics \
+	physics.triangle_mesh_shape
 
 #### Custom Build Stuff #######################################################
 

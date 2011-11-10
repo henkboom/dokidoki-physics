@@ -1,6 +1,10 @@
 #include "collision.hpp"
 
-extern "C" {
+#include "collider.hpp"
+#include "collision_shape.hpp"
+
+extern "C"
+{
     #include "lua_utils.h"
     int luaopen_physics_collision(lua_State *L);
 }
@@ -47,13 +51,19 @@ void collision_component::remove_collision_object(
     world.removeCollisionObject(collision_object);
 }
 
+void collision_component::convex_sweep_test(
+    btConvexShape *shape,
+    const btTransform &from,
+    const btTransform &to,
+    btCollisionWorld::ConvexResultCallback &callback)
+{
+    world.convexSweepTest(shape, from, to, callback, 0.1);
+}
+
 void collision_component::draw_debug()
 {
     world.debugDrawWorld();
 }
-
-#include <iostream>
-using namespace std;
 
 void collision_component::update()
 {
@@ -140,6 +150,106 @@ int collision_update(lua_State *L)
     return 0;
 }
 
+struct lua_convex_sweep_result_callback : convex_sweep_result_callback
+{
+    lua_State *L;
+    btScalar addSingleResult(
+        btCollisionWorld::LocalConvexResult &convexResult,
+        bool normalInWorldSpace);
+};
+
+btScalar lua_convex_sweep_result_callback::addSingleResult(
+    btCollisionWorld::LocalConvexResult &convexResult,
+    bool normalInWorldSpace)
+{
+    lua_pushvalue(L, -1); // dup callback
+
+    lua_newtable(L); // collision record
+
+    btCollisionObject *collision_object = convexResult.m_hitCollisionObject;
+    collider *other_collider = dynamic_cast<collider*>(
+        (collision_controller*)collision_object->getUserPointer());
+    if(other_collider)
+        other_collider->push_component();
+    else
+        lua_pushboolean(L, 0);
+    lua_setfield(L, -2, "collider");
+
+    const btVector3 &point = convexResult.m_hitPointLocal;
+    l_pushvect(L, point.x(), point.y(), point.z());
+    lua_setfield(L, -2, "point");
+
+    lua_pushnumber(L, convexResult.m_hitFraction);
+    lua_setfield(L, -2, "fraction");
+
+    btVector3 normal;
+    if(normalInWorldSpace)
+        normal = convexResult.m_hitNormalLocal;
+    else
+    {
+        btTransform *t = &collision_object->getWorldTransform();
+        normal = t->getBasis() * convexResult.m_hitNormalLocal;
+    }
+    l_pushvect(L, normal.x(), normal.y(), normal.z());
+    lua_setfield(L, -2, "normal");
+
+    // TODO we don't catch errors
+    lua_call(L, 1, 0);
+
+    return 0; // return value not actually used
+}
+
+void totransform(lua_State *L, int index, btTransform *transform)
+{
+    luaL_checktype(L, index, LUA_TTABLE);
+
+    lua_getfield(L, index, "pos");
+    double x, y, z;
+    l_tovect(L, -1, &x, &y, &z);
+    lua_pop(L, 1); // pop position
+    transform->setOrigin(btVector3(x, y, z));
+
+    lua_getfield(L, index, "orientation");
+    double w;
+    l_toquaternion(L, -1, &w, &x, &y, &z);
+    lua_pop(L, 1); // pop orientation
+    transform->setRotation(btQuaternion(x, y, z, w));
+}
+
+int collision_convex_sweep_test(lua_State *L)
+{
+    collision_component *world = get_collision_upvalue(L);
+
+    // args are (collision_shape, from_transform, to_transform, mask, callback)
+
+    btConvexShape *convex_shape =
+        dynamic_cast<btConvexShape*>(check_collision_shape(L, 1));
+    if(convex_shape == NULL)
+        luaL_argerror(L, 1, "the collision shape must be convex");
+
+    btTransform from_transform;
+    totransform(L, 2, &from_transform);
+
+    btTransform to_transform;
+    totransform(L, 3, &to_transform);
+
+    unsigned short mask;
+    mask = lua_tointeger(L, 4);
+
+    if(lua_gettop(L) < 5)
+        luaL_argerror(L, 5, "expected callback");
+    if(lua_gettop(L) > 5)
+        luaL_error(L, "too many arguments");
+
+    lua_convex_sweep_result_callback cb;
+    cb.L = L;
+    cb.m_collisionFilterMask = mask;
+
+    world->convex_sweep_test(convex_shape, from_transform, to_transform, cb);
+
+    return 0;
+}
+
 int collision_get_udata(lua_State *L)
 {
     lua_pushvalue(L, lua_upvalueindex(1));
@@ -163,6 +273,7 @@ int luaopen_physics_collision(lua_State *L)
 
     register_closure(L, "debugdraw", collision_debugdraw);
     register_closure(L, "update", collision_update);
+    register_closure(L, "convex_sweep_test", collision_convex_sweep_test);
     register_closure(L, "get_udata", collision_get_udata);
     register_closure(L, "on_removal", collision_on_removal);
 
